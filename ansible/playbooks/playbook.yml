@@ -1,0 +1,20 @@
+---
+- name: Deploy Nexus Repository
+  hosts: nexus  # Specify the host group for Nexus server
+  become: yes
+  roles:
+    - role: "nexus_server"
+
+- name: Deploy Jenkins
+  hosts: jenkins  # Specify the host group for Jenkins server
+  become: yes
+  roles:
+    - role: "jenkins_server"
+
+- name: Deploy Sonarqube
+  hosts: sonarqube  # Specify the host group for Sonarqube server
+  become: yes
+  roles:
+    - role: "sonarqube_server"
+      tags:
+        - sonarqube_setup

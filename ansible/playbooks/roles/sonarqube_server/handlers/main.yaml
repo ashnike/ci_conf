@@ -1,0 +1,14 @@
+---
+- name: Restart SonarQube service
+  systemd:
+    name: sonar
+    state: restarted
+
+- name: Apply sysctl changes
+  systemd:
+    name: sysctl
+    state: restarted
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes

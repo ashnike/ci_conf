@@ -1,0 +1,5 @@
+---
+- name: Restart Nexus Service
+  ansible.builtin.service:
+    name: nexus
+    state: restarted

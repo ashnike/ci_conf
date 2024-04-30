@@ -1,0 +1,198 @@
+---
+- name: Update package cache
+  apt:
+    update_cache: yes    
+
+- name: Install OpenJDK 17
+  apt:
+    name: openjdk-17-jdk
+    state: present
+
+- name: Add pgdg repo to sources.list.d
+  lineinfile:
+    path: /etc/apt/sources.list.d/pgdg.list
+    line: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    create: true
+
+- name: Add PostgreSQL signing key
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+
+- name: Update package cache
+  apt:
+    update_cache: yes
+
+- name: Install PostgreSQL and its dependencies
+  apt:
+    name: 
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+      - libpq-dev 
+    state: present
+
+- name: "Find out if PostgreSQL is initialized"
+  ansible.builtin.stat:
+    path: "/var/lib/pgsql/data/pg_hba.conf"
+  register: postgres_data 
+
+- name: Enable PostgreSQL service
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+
+- name: Set password for the default PostgreSQL user
+  command: sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '{{ postgres_password }}';"
+
+- name: Set up PostgreSQL for SonarQube
+  shell: |
+    sudo -u postgres psql -c "CREATE ROLE {{ sonar_db_user }} WITH LOGIN ENCRYPTED PASSWORD '{{ sonar_db_password }}';"
+    sudo -u postgres psql -c "CREATE DATABASE {{ sonar_db_name }} OWNER {{ sonar_db_user }};"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE {{ sonar_db_name }} TO {{ sonar_db_user }};"
+    sudo -u postgres psql -d {{ sonar_db_name }} -c "GRANT ALL PRIVILEGES ON SCHEMA public TO {{ sonar_db_user }};"
+
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+
+- name: Set limits for SonarQube in /etc/security/limits.conf
+  lineinfile:
+     path: /etc/security/limits.conf
+     line: "{{ item }}"
+     insertafter: EOF
+  loop:
+    - "sonarqube   -   nofile   65536"
+    - "sonarqube   -   nproc    4096"
+
+- name: Reboot the system
+  reboot:
+    reboot_timeout: 800
+
+- name: Download SonarQube
+  get_url:
+    url: "https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-{{ sonar_version }}.zip"
+    dest: "/tmp/sonarqube-{{ sonar_version }}.zip"
+
+- name: Extract SonarQube
+  unarchive:
+    src: "/tmp/sonarqube-{{ sonar_version }}.zip"
+    dest: "/opt"
+    remote_src: yes
+
+- name: Create SonarQube directory
+  file:
+    path: "/opt/sonarqube"
+    state: directory
+
+- name: Move SonarQube files to main directory
+  shell: mv -n /opt/sonarqube-{{ sonar_version }}/* /opt/sonarqube/ && rm -rf /opt/sonarqube-{{ sonar_version }}
+  args:
+    executable: /bin/bash
+
+- name: Add SonarQube group
+  group:
+    name: sonar
+    state: present
+
+- name: Add SonarQube user
+  user:
+    name: sonar
+    group: sonar
+    home: "/opt/sonarqube"
+    shell: /bin/bash
+    create_home: no
+    system: yes
+
+- name: Change ownership of SonarQube directory
+  file:
+    path: "/opt/sonarqube"
+    owner: sonar
+    group: sonar
+    recurse: yes
+
+- name: Add configuration to sonar.properties
+  blockinfile:
+    path: /opt/sonarqube/conf/sonar.properties
+    block: |
+      sonar.jdbc.username={{ sonar_db_user }}
+      sonar.jdbc.password={{ sonar_db_password }}
+      sonar.jdbc.url=jdbc:postgresql://localhost:5432/{{ sonar_db_name }}
+      sonar.web.port=9000
+      sonar.web.host=0.0.0.0
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ ansible_managed }}"
+    insertafter: "# END OF FILE"
+
+- name: Update sonar.sh script
+  lineinfile:
+    path: "/opt/sonarqube/bin/linux-x86-64/sonar.sh"
+    regexp: "^#RUN_AS_USER="
+    line: "RUN_AS_USER=sonar"
+
+- name: Update sysctl configuration
+  copy:
+    dest: /etc/sysctl.conf
+    content: |
+      vm.max_map_count=262144
+      fs.file-max=65536
+  notify: Apply sysctl changes
+
+- name: Create SonarQube systemd service
+  template:
+    src: sonar.service.j2
+    dest: /etc/systemd/system/sonar.service
+  notify: Reload systemd
+
+- name: Reload systemd daemon
+  shell: systemctl daemon-reload
+
+- name: Start SonarQube service
+  systemd:
+    name: sonar
+    state: started
+
+- name: Enable SonarQube service
+  systemd:
+    name: sonar
+    enabled: yes
+
+- name: Download SonarQube Scanner
+  get_url:
+    url: "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-{{sonar_scanner_version}}-linux.zip"
+    dest: "/tmp/sonar-scanner.zip"
+
+- name: Extract SonarQube Scanner
+  unarchive:
+    src: "/tmp/sonar-scanner.zip"
+    dest: "/opt/"
+    remote_src: yes
+
+- name: Create ExampleApp directory
+  file:
+    path: "/opt/sonarscanner"
+    state: directory
+
+- name: Move ExampleApp files to main directory
+  shell: mv -n /opt/sonar-scanner-{{ sonar_scanner_version }}-linux/* /opt/sonarscanner/ && rm -rf /opt/sonar-scanner-{{ sonar_scanner_version }}-linux
+  args:
+    executable: /bin/bash
+
+
+- name: Configure SonarQube Scanner
+  lineinfile:
+    path: "/opt/sonarscanner/conf/sonar-scanner.properties"
+    regexp: "^#sonar.host.url"
+    line: "sonar.host.url={{sonar_server_url}}"
+
+- name: Make SonarQube Scanner executable
+  file:
+    path: "/opt/sonarscanner/bin/sonar-scanner"
+    mode: "u+x"
+
+- name: Create symbolic link for SonarQube Scanner
+  file:
+    src: "/opt/sonarscanner/bin/sonar-scanner"
+    dest: "/usr/local/bin/sonar-scanner"
+    state: link

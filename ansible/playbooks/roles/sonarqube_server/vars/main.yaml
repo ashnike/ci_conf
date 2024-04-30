@@ -1,0 +1,8 @@
+ansible_managed: Managed by Ansible. DO NOT EDIT.
+postgres_password: admin123
+sonar_db_name: sonarqube
+sonar_db_password: sonar2314
+sonar_db_user: sonar
+sonar_scanner_version: 5.0.1.3006
+sonar_server_url: http://3.110.216.149:9000
+sonar_version: 10.5.0.89998

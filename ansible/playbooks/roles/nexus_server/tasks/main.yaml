@@ -1,0 +1,100 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required utilities
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - wget
+    - openjdk-11-jdk
+
+- name: Create app directory
+  file:
+    path: "/app"
+    state: directory
+
+- name: Download Nexus
+  get_url:
+    url: "https://download.sonatype.com/nexus/3/{{nexus_version}}-unix.tar.gz"
+    dest: "/tmp/nexus.tar.gz"
+
+- name: Extract Nexus archive
+  ansible.builtin.unarchive:
+    src: "/tmp/nexus.tar.gz"
+    dest: "/app"
+    remote_src: yes
+
+- name: Create nexus user
+  user:
+    name: nexus
+    state: present
+
+- name: Change ownership of Nexus files
+  ansible.builtin.file:
+    path: "/app"
+    owner: nexus
+    group: nexus
+    recurse: yes
+
+- name: Set write permissions for group on /app directory
+  ansible.builtin.file:
+    path: /app
+    owner: nexus
+    group: nexus
+    mode: "g+w"
+
+- name: Configure Nexus run_as_user
+  ansible.builtin.lineinfile:
+    path: "/app/{{nexus_version}}/bin/nexus.rc"
+    line: "run_as_user=\"nexus\""
+    regexp: "^#?run_as_user="
+    state: present
+
+- name: Create Nexus JVM options file
+  ansible.builtin.template:
+    src: templates/nexus.vmoptions.j2
+    dest: /app/{{nexus_version}}/bin/nexus.vmoptions
+  notify: Restart Nexus Service
+
+- name: Create Nexus systemd service file
+  ansible.builtin.template:
+    src: templates/nexus.service.j2
+    dest: /etc/systemd/system/nexus.service
+
+- name: Reload systemd
+  ansible.builtin.command: systemctl daemon-reload
+
+- name: Add Nexus service to boot
+  ansible.builtin.service:
+    name: nexus
+    enabled: yes 
+
+- name: Start Nexus service
+  ansible.builtin.service:
+    name: nexus
+    state: started
+
+- name: Enable Nexus service
+  ansible.builtin.service:
+    name: nexus
+    enabled: yes
+    state: started
+
+- name: Get Nexus admin password
+  ansible.builtin.command: cat /app/nexus/nexus-data/admin.password
+  register: nexus_admin_password
+
+- name: Store Neuxs Admin Password in secrets directory
+  copy:
+    content: "{{ nexus_admin_password.stdout }}"
+    dest: "../secrets/nexus_password.txt"
+  when: nexus_admin_password.stdout is defined
+  delegate_to: localhost
+  
+- name: Restart Nexus service
+  ansible.builtin.service:
+    name: nexus
+    state: restarted
