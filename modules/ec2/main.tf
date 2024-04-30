@@ -54,19 +54,19 @@ resource "aws_instance" "jenkins_instance" {
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.jenkins_sg]
   tags = {
-    Name = "jenkins-server"  # Replace with your desired name
+    Name = "jenkins-server" 
     Project     = "jenkins"
   }
 }
 
 
 resource "aws_security_group" "jenkins_sg" {
-  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
+  vpc_id = var.vpc_id 
   name        = "jenkins-sg" 
   description = "jenkins server sg"
   // Define inbound rules for Jenkins
   ingress {
-    from_port   = 8080
+    from_port   = 8080   // jenkins port
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
@@ -98,25 +98,25 @@ resource "aws_security_group" "jenkins_sg" {
 resource "aws_instance" "nexus_instance" {
   ami             = var.ami_id
   instance_type   = var.instance_type_nexus
-  subnet_id       = var.public_subnet_ids[0] # Assuming there's only one subnet
+  subnet_id       = var.public_subnet_ids[0] 
   security_groups = [aws_security_group.nexus_sg.id]
   key_name        = aws_key_pair.keypair_2.key_name
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.nexus_sg]
    tags = {
-    Name = "Nexus-server"  # Replace with your desired name
+    Name = "Nexus-server" 
     Project = "nexus"
   }
 }
 
 resource "aws_security_group" "nexus_sg" {
-  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
+  vpc_id = var.vpc_id 
   name        = "Nexus-sg" 
   description = "nexus server sg"
   // Define inbound rules for Nexus
   ingress {
-    from_port   = 8081 // Adjust as necessary based on your Nexus configuration
-    to_port     = 8081 // Adjust as necessary based on your Nexus configuration
+    from_port   = 8081 # nexus port
+    to_port     = 8081 
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -151,18 +151,18 @@ resource "aws_instance" "sonarqube_instance" {
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.sonarqube_sg]
    tags = {
-    Name = "Sonarqube-server"  # Replace with your desired name
+    Name = "Sonarqube-server"  
     Project = "sonarqube"
   }
 }
 resource "aws_security_group" "sonarqube_sg" {
-  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
+  vpc_id = var.vpc_id 
   name        = "sonarqube-sg" 
   description = "sonarqube server sg"
   // Define inbound rules for SonarQube
   ingress {
-    from_port   = 9000 // Adjust as necessary based on your SonarQube configuration
-    to_port     = 9000 // Adjust as necessary based on your SonarQube configuration
+    from_port   = 9000 // sonarqube port
+    to_port     = 9000 
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
