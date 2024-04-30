@@ -1,6 +1,6 @@
 import boto3
-import os  # Import os module to handle file paths
-import yaml  # Import yaml module to manipulate YAML files
+import os  
+import yaml  
 
 def generate_ec2_inventory():
     # Initialize Boto3 EC2 client
@@ -25,7 +25,6 @@ def generate_ec2_inventory():
             # Check if instance is SonarQube server
             if project_tag.lower() == 'sonarqube':
                 sonarqube_server_ip = public_ip
-                print("SonarQube Server IP:", sonarqube_server_ip)  # Debug line
 
             # Construct instance details string
             if public_ip:
