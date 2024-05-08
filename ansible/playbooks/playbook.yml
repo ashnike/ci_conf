@@ -4,12 +4,16 @@
   become: yes
   roles:
     - role: "nexus_server"
+      tags:
+        - nexus_setup
 
 - name: Deploy Jenkins
   hosts: jenkins  # Specify the host group for Jenkins server
   become: yes
   roles:
     - role: "jenkins_server"
+      tags:
+        - jenkins_setup
 
 - name: Deploy Sonarqube
   hosts: sonarqube  # Specify the host group for Sonarqube server
