@@ -53,20 +53,24 @@ resource "aws_instance" "jenkins_instance" {
   key_name        = aws_key_pair.keypair.key_name
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.jenkins_sg]
+  root_block_device {
+    volume_size = 30  # Change this to the desired size in GB
+    volume_type = "gp2"  # Change this to the desired volume type if necessary
+  }
   tags = {
-    Name = "jenkins-server" 
+    Name = "jenkins-server"  # Replace with your desired name
     Project     = "jenkins"
   }
 }
 
 
 resource "aws_security_group" "jenkins_sg" {
-  vpc_id = var.vpc_id 
+  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
   name        = "jenkins-sg" 
   description = "jenkins server sg"
   // Define inbound rules for Jenkins
   ingress {
-    from_port   = 8080   // jenkins port
+    from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
@@ -98,25 +102,29 @@ resource "aws_security_group" "jenkins_sg" {
 resource "aws_instance" "nexus_instance" {
   ami             = var.ami_id
   instance_type   = var.instance_type_nexus
-  subnet_id       = var.public_subnet_ids[0] 
+  subnet_id       = var.public_subnet_ids[0] # Assuming there's only one subnet
   security_groups = [aws_security_group.nexus_sg.id]
   key_name        = aws_key_pair.keypair_2.key_name
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.nexus_sg]
+  root_block_device {
+    volume_size = 30  # Change this to the desired size in GB
+    volume_type = "gp2"  # Change this to the desired volume type if necessary
+  }
    tags = {
-    Name = "Nexus-server" 
+    Name = "Nexus-server"  # Replace with your desired name
     Project = "nexus"
   }
 }
 
 resource "aws_security_group" "nexus_sg" {
-  vpc_id = var.vpc_id 
+  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
   name        = "Nexus-sg" 
   description = "nexus server sg"
   // Define inbound rules for Nexus
   ingress {
-    from_port   = 8081 # nexus port
-    to_port     = 8081 
+    from_port   = 8081 // Adjust as necessary based on your Nexus configuration
+    to_port     = 8081 // Adjust as necessary based on your Nexus configuration
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -150,18 +158,22 @@ resource "aws_instance" "sonarqube_instance" {
   key_name        = aws_key_pair.keypair_3.key_name
   iam_instance_profile = var.instance_profile_name
   depends_on = [aws_security_group.sonarqube_sg]
+  root_block_device {
+    volume_size = 30  # Change this to the desired size in GB
+    volume_type = "gp2"  # Change this to the desired volume type if necessary
+  }
    tags = {
-    Name = "Sonarqube-server"  
+    Name = "Sonarqube-server"  # Replace with your desired name
     Project = "sonarqube"
   }
 }
 resource "aws_security_group" "sonarqube_sg" {
-  vpc_id = var.vpc_id 
+  vpc_id = var.vpc_id // Assuming you have vpc_id output in your vpc module
   name        = "sonarqube-sg" 
   description = "sonarqube server sg"
   // Define inbound rules for SonarQube
   ingress {
-    from_port   = 9000 // sonarqube port
+    from_port   = 9000 // Adjust as necessary based on your SonarQube configuration
     to_port     = 9000 
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
