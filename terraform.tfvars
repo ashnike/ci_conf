@@ -1,0 +1,11 @@
+vpc_cidr_block = "10.0.0.0/16" 
+public_subnet_cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidr_blocks = ["10.0.3.0/24", "10.0.4.0/24"]
+availability_zones = ["us-east-1a", "us-east-1b"]
+iam_policy_name = "EC2-SSH1-policy"
+role_name = "EC2-SSH1-role"
+instance_profile_name = "EC2SSHprofile"
+ami_id = "ami-0cfa2ad4242c3168d"
+instance_type_jenkins = "t3.medium"
+instance_type_nexus = "t3.medium"
+instance_type_sonarqube = "t3.medium"
