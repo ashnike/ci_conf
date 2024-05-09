@@ -83,9 +83,19 @@
     enabled: yes
     state: started
 
+- name: Wait for Nexus to become available
+  ansible.builtin.wait_for:
+    host: localhost  
+    port: 8081       # Change this to the actual Nexus server port
+    delay: 10        # Optional delay before starting to check
+    timeout: 300     # Maximum time to wait in seconds
+  register: nexus_available
+
 - name: Get Nexus admin password
-  ansible.builtin.command: cat /app/nexus/nexus-data/admin.password
+  ansible.builtin.command: cat /app/nexus-3.67.1-01/nexus/nexus-data/admin.password
   register: nexus_admin_password
+  when: nexus_available.elapsed > 0  # Execute only if Nexus became available during the wait
+
 
 - name: Store Neuxs Admin Password in secrets directory
   copy:
